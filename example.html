@@ -21,7 +21,9 @@
     <script src="dist/d3fc.js"></script>
     <script src="dist/firchart.js"></script>
     <script>
-      FirChart("chart-container", fc.randomFinancial()(100), {
+      const data = fc.randomFinancial()(100);
+      data[data.length - 1].close = data[data.length - 1].open;
+      FirChart("chart-container", data, {
         colors: {
           bull: "#449883",
           bear: "#db464a",
