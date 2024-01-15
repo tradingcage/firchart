@@ -1,41 +1,41 @@
 <!doctype html>
 <html>
-<head>
-<style>
-body {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-}
-#chart-container {
-  width: 100%;
-  height: 100vh;
-}
-</style>
-</head>
-<body>
-  <div id="chart-container"></div>
+  <head>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+      #chart-container {
+        width: 100%;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chart-container"></div>
 
-  <script src="d3.js"></script>
-  <script src="d3fc.js"></script>
-  <script src="firchart.js"></script>
-  <script>
-    FirChart("chart-container", fc.randomFinancial()(100), {
-      colors: {
-        bull: "#449883",
-        bear: "#db464a",
-      },
-      scaleExtent: [.2, 5],
-      indicators: [
-        "sma",
-        "ema",
-        "atr",
-        "keltnerChannels",
-        "bollingerBands",
-        "rsi",
-      ],
-    });
-  </script>
-</body>
+    <script src="dist/d3.js"></script>
+    <script src="dist/d3fc.js"></script>
+    <script src="dist/firchart.js"></script>
+    <script>
+      FirChart("chart-container", fc.randomFinancial()(100), {
+        colors: {
+          bull: "#449883",
+          bear: "#db464a",
+        },
+        scaleExtent: [0.2, 5],
+        indicators: [
+          "sma",
+          "ema",
+          "atr",
+          "keltnerChannels",
+          "bollingerBands",
+          "rsi",
+        ],
+      });
+    </script>
+  </body>
 </html>
