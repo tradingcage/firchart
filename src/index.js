@@ -506,8 +506,8 @@ function FirChart(chartContainer, userProvidedData, options) {
       for (var i = 1; i < data.length; i++) {
         if (data[i].date.getTime() - data[i - 1].date.getTime() > step) {
           ranges.push([
-            data[i - 1].date,
-            new Date(data[i].date.getTime() - step),
+            data[i - 1].date.getTime(),
+            new Date(data[i].date.getTime() - step).getTime(),
           ]);
         }
       }
