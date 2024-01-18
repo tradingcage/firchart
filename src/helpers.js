@@ -63,3 +63,7 @@ export function removeObjectFromArray(array, object) {
     array.splice(index, 1);
   }
 }
+
+export function sameSign(a, b) {
+  return Math.sign(a) === Math.sign(b);
+}

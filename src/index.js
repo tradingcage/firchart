@@ -5,6 +5,7 @@ import {
   hexToRgba,
   round2,
   removeObjectFromArray,
+  sameSign,
 } from "./helpers.js";
 import { LocalStorageObject, DummyObject } from "./localstorage.js";
 import {
@@ -478,27 +479,36 @@ function FirChart(chartContainer, userProvidedData, options) {
 
   const xScale = fc
     .scaleDiscontinuous(d3.scaleTime())
-    .domain(fc.extentDate().accessors([(d) => d.date])(data));
+    .domain(fc.extentDate().accessors([(d) => d.date.getTime()])(data));
   const yScale = d3
     .scaleLinear()
     .domain(fc.extentLinear().accessors(paddedAccessors())(data));
 
-  const getSmallestDifference = (vals) => {
+  const getMostCommonDifference = (vals) => {
     if (vals.length < 2) {
       return 0;
     }
-    let smallestDifference = Number.MAX_SAFE_INTEGER;
+
+    let mostCommonDifference = 0;
+    const differencesMap = { 0: 0 };
     for (var i = 1; i < vals.length; i++) {
-      if (Math.abs(vals[i] - vals[i - 1]) < smallestDifference) {
-        smallestDifference = Math.abs(vals[i] - vals[i - 1]);
+      const difference = Math.abs(vals[i] - vals[i - 1]);
+      if (differencesMap[difference] !== undefined) {
+        differencesMap[difference] = 0;
+      }
+      differencesMap[difference] += 1;
+      if (differencesMap[difference] > differencesMap[mostCommonDifference]) {
+        mostCommonDifference = difference;
       }
     }
-    return smallestDifference;
+
+    return mostCommonDifference;
   };
 
   const getStep = () =>
-    getSmallestDifference(data.map((x) => x.date.getTime()));
+    getMostCommonDifference(data.map((x) => x.date.getTime()));
 
+  let discontinuityRanges = [];
   const refreshXScaleDiscontinuity = () => {
     if (data.length > 1) {
       let step = getStep();
@@ -512,6 +522,7 @@ function FirChart(chartContainer, userProvidedData, options) {
           ]);
         }
       }
+      discontinuityRanges = ranges;
       xScale.discontinuityProvider(fc.discontinuityRange(...ranges));
     }
   };
@@ -519,8 +530,8 @@ function FirChart(chartContainer, userProvidedData, options) {
   const moveChartRight = (step) => {
     const oldDomain = xScale.domain();
     xScale.domain([
-      new Date(oldDomain[0].getTime() + step),
-      new Date(oldDomain[1].getTime() + step),
+      new Date(oldDomain[0].getTime() + step).getTime(),
+      new Date(oldDomain[1].getTime() + step).getTime(),
     ]);
     refreshXScaleDiscontinuity();
   };
@@ -535,7 +546,7 @@ function FirChart(chartContainer, userProvidedData, options) {
       first = data[data.length - 100].date;
     }
     refreshXScaleDiscontinuity();
-    xScale.domain([first, last]);
+    xScale.domain([first.getTime(), last.getTime()]);
   };
 
   refreshXDomain();
@@ -546,8 +557,8 @@ function FirChart(chartContainer, userProvidedData, options) {
     }
     const visibleData = data.filter(
       (d) =>
-        xScale(d.date) >= 0 &&
-        xScale(d.date) <= d3.select("#ohlc-chart").node().clientWidth,
+        xScale(d.date.getTime()) >= 0 &&
+        xScale(d.date.getTime()) <= d3.select("#ohlc-chart").node().clientWidth,
     );
     let min = Math.min(...visibleData.map((d) => d.low));
     let max = Math.max(...visibleData.map((d) => d.high));
@@ -576,8 +587,8 @@ function FirChart(chartContainer, userProvidedData, options) {
       refreshYDomain();
 
       state.textDrawings.forEach(({ x, y, elem }) => {
-        elem.setAttributeNS(null, "x", xScale(x));
-        elem.setAttributeNS(null, "y", yScale(y));
+        elem.setAttributeNS(null, "x", xScale(x.getTime()));
+        elem.setAttributeNS(null, "y", yScale(y.getTime()));
       });
 
       render();
@@ -945,28 +956,61 @@ function FirChart(chartContainer, userProvidedData, options) {
   const oneDayMillis = 1000 * 60 * 60 * 24;
   function getLineCrossValueFn(x1, x2) {
     return (bar) => {
-      const diff2 = (x2 - bar.date) / oneDayMillis;
+      const diff2 = (x2 - bar.date.getTime()) / oneDayMillis;
       if (diff2 > -1 && diff2 < 0) {
         return x2;
       }
-      const diff1 = (x1 - bar.date) / oneDayMillis;
+      const diff1 = (x1 - bar.date.getTime()) / oneDayMillis;
       if ((diff1 > 0 && diff1 < 1) || (diff1 > -1 && diff1 < 0)) {
         return x1;
       }
       if (
-        (x1 <= x2 && bar.date >= x1 && bar.date <= x2) ||
-        (x2 < x1 && bar.date >= x2 && bar.date <= x1)
+        (x1 <= x2 && bar.date.getTime() >= x1 && bar.date.getTime() <= x2) ||
+        (x2 < x1 && bar.date.getTime() >= x2 && bar.date.getTime() <= x1)
       ) {
         return bar.date;
       }
     };
   }
 
+  function getDiscontinuitiesBetween(x1, x2) {
+    // Assume discontuinityRanges is sorted, and start and end within a range
+    // are sorted. Assume x1 and x2 are unsorted.
+    const left = Math.min(x1, x2);
+    const right = Math.max(x1, x2);
+    let leftDiscI = -1;
+    let rightDiscI = -1;
+    for (let i = 0; i < discontinuityRanges.length; i++) {
+      const [start, end] = discontinuityRanges[i];
+      if (left > start) {
+        leftDiscI = i;
+      }
+      if (right > start) {
+        rightDiscI = i;
+      }
+    }
+    return discontinuityRanges.slice(leftDiscI + 1, rightDiscI + 1);
+  }
+
   function getLineMainValueFn(x1, y1, x2, y2) {
-    const slope = (y2 - y1) / (x2 - x1);
+    // If there is a discontinuity between bar and x1, use the discontinuity's
+    // boundary as the x value and calculate the y value such that the disjoint
+    // segments still render one continuous line.
+    const getDiscChange = (x1, x2) => {
+      const discontinuitiesBetween = getDiscontinuitiesBetween(x1, x2);
+      const discSum = discontinuitiesBetween.reduce(
+        (sum, [start, end]) => sum + (end - start),
+        0,
+      );
+      const discChange = x2 > x1 ? -discSum : discSum;
+      return discChange;
+    };
+
+    const slope = (y2 - y1) / (x2 - x1 + getDiscChange(x1, x2));
     if (isNaN(slope)) {
       return;
     }
+
     return (bar) => {
       const diff2 = (x2 - bar.date) / oneDayMillis;
       if (diff2 > -1 && diff2 < 0) {
@@ -976,7 +1020,12 @@ function FirChart(chartContainer, userProvidedData, options) {
       if ((diff1 > 0 && diff1 < 1) || (diff1 > -1 && diff1 < 0)) {
         return y1;
       }
-      return y1 + (bar.date.getTime() - x1.getTime()) * slope;
+      const discChange = getDiscChange(x1, bar.date.getTime());
+      let xDelt = bar.date.getTime() - x1;
+      if (sameSign(xDelt + discChange, xDelt)) {
+        xDelt += discChange;
+      }
+      return y1 + xDelt * slope;
     };
   }
 
