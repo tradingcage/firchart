@@ -1,3 +1,5 @@
+import { hexToRgba } from "./helpers.js";
+
 export const setFillColor = (colors, opacity) => {
   return (program, data) => {
     const bull = hexToRgba(colors.bull);

@@ -1,3 +1,5 @@
+import { iconoirXmarkSvg } from "./iconsvg.js";
+
 export function createFormFromObject(elem, obj, callback) {
   // Create the form element
   var form = document.createElement("form");

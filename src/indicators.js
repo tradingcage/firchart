@@ -1,3 +1,5 @@
+import { round2 } from "./helpers.js";
+
 function sma(bar, length, accessor) {
   let sum = 0;
   for (var i = 0; i < length; i++) {
@@ -15,15 +17,20 @@ function ema(bar, length, accessor) {
   }
 
   let k = 2 / (length + 1); // Weighting multiplier
-  let ema = bar[0][accessor]; // Starting with the first data point
+  let emaValue = null;
 
-  for (var i = 1; i < length; i++) {
+  for (var i = length - 1; i >= 0; i--) {
     if (bar[i][accessor] == null) {
-      return;
+      continue;
     }
-    ema = bar[i][accessor] * k + ema * (1 - k);
+    if (emaValue === null) {
+      let smaValue = sma(bar[i], length, accessor);
+      emaValue = bar[i][accessor] * k + smaValue * (1 - k);
+    } else {
+      emaValue = bar[i][accessor] * k + emaValue * (1 - k);
+    }
   }
-  return ema;
+  return emaValue;
 }
 
 function trueRange(bar, previousClose) {

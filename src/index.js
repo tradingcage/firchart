@@ -32,12 +32,13 @@ import { createFormFromObject, createPopup } from "./html.js";
 function createWrappedDatum(datum, index, arr) {
   return new Proxy(datum, {
     get(target, prop) {
+      let barVal = {};
       if (typeof prop === "string" && !isNaN(prop)) {
         const value = arr[index - Number(prop)];
-        if (value == null) {
-          return {};
+        if (value != null) {
+          barVal = value;
         }
-        return value;
+        return createWrappedDatum(barVal, index, arr);
       }
       return target[prop];
     },
@@ -274,7 +275,7 @@ function FirChart(chartContainer, userProvidedData, options) {
 
   infoBoxElem.appendChild(infoBoxSubcontainerElem);
 
-  infoBoxItems = [];
+  const infoBoxItems = [];
 
   function addToInfoBox(newItem, visibilityToggleFn, valueFn, removeCb) {
     const newItemElem = document.createElement("div");
