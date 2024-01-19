@@ -32,7 +32,7 @@
           data[i].date.getTime() - 50 * 1000 * 60 * 60 * 24,
         );
       }
-      FirChart("chart-container", data, {
+      const { addTextDrawing } = FirChart("chart-container", data, {
         colors: {
           bull: "#449883",
           bear: "#db464a",
@@ -47,6 +47,9 @@
           "rsi",
         ],
       });
+      setTimeout(() => {
+        addTextDrawing(data[65].date, 100, "yo");
+      }, 5000);
     </script>
   </body>
 </html>

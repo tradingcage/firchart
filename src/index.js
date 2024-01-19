@@ -588,7 +588,7 @@ function FirChart(chartContainer, userProvidedData, options) {
 
       state.textDrawings.forEach(({ x, y, elem }) => {
         elem.setAttributeNS(null, "x", xScale(x.getTime()));
-        elem.setAttributeNS(null, "y", yScale(y.getTime()));
+        elem.setAttributeNS(null, "y", yScale(y));
       });
 
       render();
