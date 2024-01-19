@@ -67,3 +67,24 @@ export function removeObjectFromArray(array, object) {
 export function sameSign(a, b) {
   return Math.sign(a) === Math.sign(b);
 }
+
+export function getMostCommonDifference(vals) {
+  if (vals.length < 2) {
+    return 0;
+  }
+
+  let mostCommonDifference = 0;
+  const differencesMap = { 0: 0 };
+  for (var i = 1; i < vals.length; i++) {
+    const difference = Math.abs(vals[i] - vals[i - 1]);
+    if (differencesMap[difference] !== undefined) {
+      differencesMap[difference] = 0;
+    }
+    differencesMap[difference] += 1;
+    if (differencesMap[difference] > differencesMap[mostCommonDifference]) {
+      mostCommonDifference = difference;
+    }
+  }
+
+  return mostCommonDifference;
+}

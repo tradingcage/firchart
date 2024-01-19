@@ -6,6 +6,7 @@ import {
   round2,
   removeObjectFromArray,
   sameSign,
+  getMostCommonDifference,
 } from "./helpers.js";
 import { LocalStorageObject, DummyObject } from "./localstorage.js";
 import {
@@ -36,7 +37,7 @@ function createWrappedDatum(datum, index, arr) {
       let barVal = {};
       if (typeof prop === "string" && !isNaN(prop)) {
         const value = arr[index - Number(prop)];
-        if (value != null) {
+        if (value != null && !isDummy(value)) {
           barVal = value;
         }
         return createWrappedDatum(barVal, index, arr);
@@ -65,6 +66,39 @@ const isOverlappingAndLater = (d1, d2) => {
   return false;
 };
 
+function isDummy(bar) {
+  return bar.volume === -1;
+}
+
+function genDummyBookends(data) {
+  const step = getMostCommonDifference(data.map((x) => x.date.getTime()));
+  const genDummyBars = (num, firstDate, step, val) =>
+    new Array(num)
+      .fill(0)
+      .map((_, i) => ({
+        date: new Date(firstDate + (i + 1) * step),
+        open: val,
+        high: val,
+        low: val,
+        close: val,
+        volume: -1,
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  const leftBookend = genDummyBars(
+    50,
+    data[0].date.getTime(),
+    -step,
+    data[0].open,
+  );
+  const rightBookend = genDummyBars(
+    50,
+    data[data.length - 1].date.getTime(),
+    step,
+    data[data.length - 1].close,
+  );
+  return leftBookend.concat(data).concat(rightBookend);
+}
+
 // This is the main function that is exposed to the user
 function FirChart(chartContainer, userProvidedData, options) {
   let persistedSettings;
@@ -74,9 +108,7 @@ function FirChart(chartContainer, userProvidedData, options) {
     persistedSettings = new DummyObject();
   }
 
-  // Now the rest of the library code
-
-  let data = userProvidedData.map((datum, index, arr) =>
+  let data = genDummyBookends(userProvidedData).map((datum, index, arr) =>
     createWrappedDatum(datum, index, arr),
   );
 
@@ -84,6 +116,7 @@ function FirChart(chartContainer, userProvidedData, options) {
     // special case for when the chart should just move to the right instead of resetting the X axis zoom
     let shouldMoveRight = false;
     let step = 0;
+    newData = genDummyBookends(newData);
     if (isOverlappingAndLater(data, newData)) {
       shouldMoveRight = true;
       step =
@@ -470,40 +503,35 @@ function FirChart(chartContainer, userProvidedData, options) {
 
   // Set up the zooming and scaling
 
-  function paddedAccessors() {
-    return [
-      (d) => d.high + (d.high - d.low) / 3,
-      (d) => d.low - (d.high - d.low) / 3,
-    ];
+  function paddedYDomain(data) {
+    const visibleData = data.filter(
+      (d) =>
+        !isDummy(d) &&
+        xScale(d.date.getTime()) >= 0 &&
+        xScale(d.date.getTime()) <= d3.select("#ohlc-chart").node().clientWidth,
+    );
+    let min = Math.min(...visibleData.map((d) => d.low));
+    let max = Math.max(...visibleData.map((d) => d.high));
+    state.indicators.forEach((i) => {
+      if (!i.separatePane && i.state.enabled) {
+        let vals = visibleData.map(i.fn).filter((x) => !isNaN(x));
+        if (Math.min(...vals) < min) {
+          min = Math.min(...vals);
+        }
+        if (Math.max(...vals) > max) {
+          max = Math.max(...vals);
+        }
+      }
+    });
+    max += (max - min) / 10;
+    min -= (max - min) / 10;
+    return [min, max];
   }
 
   const xScale = fc
     .scaleDiscontinuous(d3.scaleTime())
     .domain(fc.extentDate().accessors([(d) => d.date.getTime()])(data));
-  const yScale = d3
-    .scaleLinear()
-    .domain(fc.extentLinear().accessors(paddedAccessors())(data));
-
-  const getMostCommonDifference = (vals) => {
-    if (vals.length < 2) {
-      return 0;
-    }
-
-    let mostCommonDifference = 0;
-    const differencesMap = { 0: 0 };
-    for (var i = 1; i < vals.length; i++) {
-      const difference = Math.abs(vals[i] - vals[i - 1]);
-      if (differencesMap[difference] !== undefined) {
-        differencesMap[difference] = 0;
-      }
-      differencesMap[difference] += 1;
-      if (differencesMap[difference] > differencesMap[mostCommonDifference]) {
-        mostCommonDifference = difference;
-      }
-    }
-
-    return mostCommonDifference;
-  };
+  const yScale = d3.scaleLinear().domain(paddedYDomain(data));
 
   const getStep = () =>
     getMostCommonDifference(data.map((x) => x.date.getTime()));
@@ -537,13 +565,16 @@ function FirChart(chartContainer, userProvidedData, options) {
   };
 
   const refreshXDomain = () => {
-    if (data.length === 0) {
+    const nonDummy = data.filter((d) => !isDummy(d));
+    if (nonDummy.length === 0) {
       return;
     }
-    let last = new Date(data[data.length - 1].date.getTime() + getStep());
-    let first = data[0].date;
-    if (data.length > 100) {
-      first = data[data.length - 100].date;
+    let last = new Date(
+      nonDummy[nonDummy.length - 1].date.getTime() + getStep(),
+    );
+    let first = nonDummy[0].date;
+    if (nonDummy.length > 100) {
+      first = nonDummy[nonDummy.length - 100].date;
     }
     refreshXScaleDiscontinuity();
     xScale.domain([first.getTime(), last.getTime()]);
@@ -555,27 +586,7 @@ function FirChart(chartContainer, userProvidedData, options) {
     if (data.length === 0) {
       return;
     }
-    const visibleData = data.filter(
-      (d) =>
-        xScale(d.date.getTime()) >= 0 &&
-        xScale(d.date.getTime()) <= d3.select("#ohlc-chart").node().clientWidth,
-    );
-    let min = Math.min(...visibleData.map((d) => d.low));
-    let max = Math.max(...visibleData.map((d) => d.high));
-    state.indicators.forEach((i) => {
-      if (!i.separatePane && i.state.enabled) {
-        let vals = visibleData.map(i.fn).filter((x) => !isNaN(x));
-        if (Math.min(...vals) < min) {
-          min = Math.min(...vals);
-        }
-        if (Math.max(...vals) > max) {
-          max = Math.max(...vals);
-        }
-      }
-    });
-    max += (max - min) / 10;
-    min -= (max - min) / 10;
-    yScale.domain([min, max]);
+    yScale.domain(paddedYDomain(data));
   };
 
   const zoom = fc
@@ -637,7 +648,7 @@ function FirChart(chartContainer, userProvidedData, options) {
   function addIndicator(indicator) {
     const { type, options, fn } = indicator;
     indicator.fn = (bar) => {
-      if (bar) {
+      if (bar && !isDummy(bar)) {
         return fn(bar, indicator.options);
       }
     };
@@ -1361,6 +1372,10 @@ function FirChart(chartContainer, userProvidedData, options) {
         : prev;
     });
 
+    if (isDummy(nearest)) {
+      return;
+    }
+
     mousePos.x = xScale(nearest.date);
     mousePos.y = nearestValue;
 
@@ -1385,7 +1400,9 @@ function FirChart(chartContainer, userProvidedData, options) {
       snapMouseToOHLC(nearest);
     }
 
-    priceChangeCallbacks.forEach((fn) => fn(nearest));
+    if (!isDummy(nearest)) {
+      priceChangeCallbacks.forEach((fn) => fn(nearest));
+    }
 
     renderCrosshair();
   }
