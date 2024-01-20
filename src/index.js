@@ -71,30 +71,27 @@ function isDummy(bar) {
 }
 
 function genDummyBookends(data) {
+  if (!data || data.length == 0) {
+    return data;
+  }
   const step = getMostCommonDifference(data.map((x) => x.date.getTime()));
-  const genDummyBars = (num, firstDate, step, val) =>
+  const genDummyBars = (num, firstDate, step) =>
     new Array(num)
       .fill(0)
       .map((_, i) => ({
         date: new Date(firstDate + (i + 1) * step),
-        open: val,
-        high: val,
-        low: val,
-        close: val,
+        open: 0,
+        high: 0,
+        low: 0,
+        close: 0,
         volume: -1,
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  const leftBookend = genDummyBars(
-    50,
-    data[0].date.getTime(),
-    -step,
-    data[0].open,
-  );
+  const leftBookend = genDummyBars(50, data[0].date.getTime(), -step, 0);
   const rightBookend = genDummyBars(
     50,
     data[data.length - 1].date.getTime(),
     step,
-    data[data.length - 1].close,
   );
   return leftBookend.concat(data).concat(rightBookend);
 }
@@ -1247,13 +1244,13 @@ function FirChart(chartContainer, userProvidedData, options) {
 
   state.textDrawings = [];
 
-  function addTextDrawing(x, y, text) {
+  function addTextDrawing(x, y, text, anchor) {
     const ohlcSvg = document.querySelector("#ohlc-chart .plot-area svg");
     if (ohlcSvg) {
       const newText = document.createElementNS(svgNS, "text");
       newText.setAttributeNS(null, "x", xScale(x));
       newText.setAttributeNS(null, "y", yScale(y));
-      newText.style.textAnchor = "middle";
+      newText.style.textAnchor = anchor ?? "middle";
       newText.innerHTML = text;
       ohlcSvg.appendChild(newText);
       const newTextWrapper = { x, y, elem: newText };
@@ -1701,6 +1698,8 @@ function FirChart(chartContainer, userProvidedData, options) {
     addLineDrawing,
     refreshData,
     setScaleExtent,
+    getMostCommonDifference: () =>
+      getMostCommonDifference(data.map((x) => x.date.getTime())),
   };
 }
 
