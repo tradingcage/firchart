@@ -22,10 +22,8 @@ import {
 import {
   setFillColor,
   specialgrid,
-  flatgrid,
   attr,
   displayNone,
-  displayBlock,
   disablePane,
   enablePane,
 } from "./display.js";
@@ -626,6 +624,23 @@ function FirChart(chartContainer, userProvidedData, options) {
     .xLabel((_) => "")
     .yLabel((_) => "")
     .decorate(annotationLine);
+
+  // Gridline setup and render
+
+  const gridline = fc.annotationSvgGridline().xScale(xScale).yScale(yScale);
+
+  function renderGridline() {
+    if (xScale.range()[1] === 1) {
+      xScale.range([0, d3.select("#ohlc-chart").node().clientWidth]);
+      yScale.range([d3.select("#ohlc-chart").node().clientHeight, 0]);
+    }
+    d3.select("#ohlc-chart svg").call(gridline);
+    d3.select("#volume-chart svg").call(gridline);
+    state.additionalPanes.forEach(({ id }) => {
+      d3.select(`${id} svg`).call(gridline);
+    });
+    d3.selectAll(".gridline-x").call(displayNone);
+  }
 
   // Add the indicators
 
@@ -1347,6 +1362,12 @@ function FirChart(chartContainer, userProvidedData, options) {
     }
   });
 
+  document.addEventListener("mousemove", (e) => {
+    if (!e.shiftKey) {
+      shiftKeyPressed = false;
+    }
+  });
+
   document.addEventListener("keyup", (e) => {
     if (e.key === "Shift") {
       shiftKeyPressed = false;
@@ -1663,6 +1684,8 @@ function FirChart(chartContainer, userProvidedData, options) {
     } else {
       enablePane("#volume-chart");
     }
+
+    renderGridline();
 
     renderCrosshair();
   }
