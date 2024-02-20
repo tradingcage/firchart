@@ -1,5 +1,7 @@
 # FirChart
 
+<img width="1792" alt="Screen Shot 2024-02-20 at 10 05 12 AM" src="https://github.com/tradingcage/firchart/assets/143196169/08797b44-d2af-44af-b8dd-5d562ceaf6f2">
+
 FirChart is an open source charting library for OHLCV data. It is in early development and the API is likely to change.
 
 The chart contains some basic technical analysis and drawing features. The long term vision is that FirChart can be a fully open source replacement for advanced charting platforms such as TradingView.
