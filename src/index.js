@@ -547,16 +547,26 @@ function FirChart(chartContainer, userProvidedData, options) {
       }
       discontinuityRanges = ranges;
       xScale.discontinuityProvider(fc.discontinuityRange(...ranges));
+      return ranges;
     }
+    return [];
   };
 
   const moveChartRight = (step) => {
     const oldDomain = xScale.domain();
-    xScale.domain([
+    const newDomain = [
       new Date(oldDomain[0].getTime() + step).getTime(),
       new Date(oldDomain[1].getTime() + step).getTime(),
-    ]);
-    refreshXScaleDiscontinuity();
+    ];
+    const discontinuities = refreshXScaleDiscontinuity();
+    for (let i = 0; i < discontinuities.length; i++) {
+      const [dStart, dEnd] = discontinuities[i];
+      if (newDomain[0] >= dStart && newDomain[0] < dEnd) {
+        newDomain[0] += dEnd - dStart;
+        break;
+      }
+    }
+    xScale.domain(newDomain);
   };
 
   const refreshXDomain = () => {
