@@ -1,5 +1,3 @@
-import { round2 } from "./helpers.js";
-
 function sma(bar, length, accessor) {
   let sum = 0;
   for (var i = 0; i < length; i++) {
@@ -97,7 +95,7 @@ const simpleMovingAverageIndicator = {
     length: 20,
   },
   fn: (bar, options) => {
-    return round2(sma(bar, options.length, "close"));
+    return sma(bar, options.length, "close");
   },
 };
 
@@ -109,7 +107,7 @@ const exponentialMovingAverageIndicator = {
     length: 20,
   },
   fn: (bar, options) => {
-    return round2(ema(bar, options.length, "close"));
+    return ema(bar, options.length, "close");
   },
 };
 
@@ -122,7 +120,7 @@ const averageTrueRangeIndicator = {
     length: 14,
   },
   fn: (bar, options) => {
-    return round2(atr(bar, options.length));
+    return atr(bar, options.length);
   },
 };
 
@@ -141,9 +139,9 @@ const keltnerChannelsIndicator = {
     const range = atr(bar, options.atrLength);
 
     return [
-      round2(middleLine + range * options.multiplier),
-      round2(middleLine),
-      round2(middleLine - range * options.multiplier),
+      middleLine + range * options.multiplier,
+      middleLine,
+      middleLine - range * options.multiplier,
     ];
   },
 };
@@ -162,9 +160,9 @@ const bollingerBandsIndicator = {
     const sd = stdev(bar, options.smaLength, "close");
 
     return [
-      round2(middleBand + sd * options.stdev),
-      round2(middleBand),
-      round2(middleBand - sd * options.stdev),
+      middleBand + sd * options.stdev,
+      middleBand,
+      middleBand - sd * options.stdev,
     ];
   },
 };
@@ -183,7 +181,7 @@ const rsiIndicator = {
   fn: (bar, options) => {
     return [
       options.upperLevel,
-      round2(rsi(bar, options.length, "close")),
+      rsi(bar, options.length, "close"),
       options.lowerLevel,
     ];
   },

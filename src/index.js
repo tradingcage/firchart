@@ -3,7 +3,7 @@ import {
   deepCopy,
   generateRandomString,
   hexToRgba,
-  round2,
+  round4,
   removeObjectFromArray,
   sameSign,
   getMostCommonDifference,
@@ -242,10 +242,10 @@ function FirChart(chartContainer, userProvidedData, options) {
   };
 
   priceChangeCallbacks.push((bar) => {
-    ohlcElements.open.innerHTML = round2(bar.open);
-    ohlcElements.high.innerHTML = round2(bar.high);
-    ohlcElements.low.innerHTML = round2(bar.low);
-    ohlcElements.close.innerHTML = round2(bar.close);
+    ohlcElements.open.innerHTML = bar.open;
+    ohlcElements.high.innerHTML = bar.high;
+    ohlcElements.low.innerHTML = bar.low;
+    ohlcElements.close.innerHTML = bar.close;
   });
 
   const openLabel = document.createElement("span");
@@ -395,11 +395,11 @@ function FirChart(chartContainer, userProvidedData, options) {
         onValueChange: (bar) => {
           const value = valueFn(bar);
           if (Array.isArray(value) && !value.some(isNaN)) {
-            valueElem.innerHTML = value.join(",");
+            valueElem.innerHTML = value.map(round4).join(",");
           } else if (isNaN(value)) {
             valueElem.innerHTML = "...";
           } else {
-            valueElem.innerHTML = "" + value;
+            valueElem.innerHTML = "" + round4(value);
           }
         },
       };
@@ -493,7 +493,7 @@ function FirChart(chartContainer, userProvidedData, options) {
   addToInfoBox(
     { name: () => "Volume", id: "volume" },
     () => (state.volumeVisible = !state.volumeVisible),
-    (bar) => round2(bar.volume),
+    (bar) => bar.volume,
   );
 
   // Set up the zooming and scaling
@@ -1297,7 +1297,7 @@ function FirChart(chartContainer, userProvidedData, options) {
 
   const volumeScale = d3.scaleLinear();
   const refreshVolumeDomain = () => {
-    const volumeValues = data.map((d) => d.volume);
+    const volumeValues = data.map((d) => d.volume).filter((v) => v >= 0);
     const maxVolume = Math.max(...volumeValues);
     const minVolume = Math.min(...volumeValues);
     volumeScale.domain([minVolume / 1.3, maxVolume]);
@@ -1467,7 +1467,7 @@ function FirChart(chartContainer, userProvidedData, options) {
 
     const activeYScale = getYScaleOfPane(state.currentPaneId);
     const adjustedY = mousePos.y - getHeightOfPanesAbove(state.currentPaneId);
-    const yLabelText = round2(activeYScale.invert(adjustedY));
+    const yLabelText = activeYScale.invert(adjustedY);
     const yLabel = d3.select("#y-label");
 
     if (mousePos.x < 0 || mousePos.y < 0) {
